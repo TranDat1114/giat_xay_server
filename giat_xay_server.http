@@ -1,0 +1,6 @@
+@giat_xay_server_HostAddress = http://localhost:5091
+
+GET {{giat_xay_server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
