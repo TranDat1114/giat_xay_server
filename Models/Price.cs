@@ -3,12 +3,11 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace giat_xay_server;
 
-public class Order : Entities
+public class Price
 {
-    public int OrderId { get; set; }
-    public string UserAddress { get; set; } = string.Empty;
-    public string? Note { get; set; }
-    public string? Status { get; set; }
+    public decimal Value { get; set; }
+    public string? Description { get; set; }
+    public int? Weight { get; set; }
     public Guid LaundryServiceGuid { get; set; }
     [ForeignKey("LaundryServiceGuid")]
     [SwaggerIgnore]
