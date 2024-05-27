@@ -3,7 +3,7 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace giat_xay_server;
 
-public class Price
+public class Price : Entities
 {
     public decimal Value { get; set; }
     public string? Description { get; set; }

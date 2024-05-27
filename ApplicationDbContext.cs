@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace giat_xay_server;
 
@@ -8,6 +9,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<LaundryService> LaundryServices { get; set; } = null!;
     public DbSet<Order> Orders { get; set; } = null!;
     public DbSet<Price> Prices { get; set; } = null!;
+    public DbSet<Image> Images { get; set; } = null!;
     public override int SaveChanges()
     {
         SetTimestamps();
@@ -20,21 +22,29 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         return base.SaveChangesAsync(cancellationToken);
     }
 
+    // Thêm các thông tin về thời gian tạo, cập nhật, xóa và người tạo, cập nhật vào các bảng
     private void SetTimestamps(string? currentUser = "System")
     {
-        var entries = ChangeTracker.Entries().Where(x => x.Entity is Entities && (x.State == EntityState.Added || x.State == EntityState.Modified));
+        var entries = ChangeTracker.Entries().Where(x => x.Entity is Entities && (x.State == EntityState.Added || x.State == EntityState.Modified || x.State == EntityState.Deleted));
+        var Now = DateTime.UtcNow;
         foreach (var entry in entries)
         {
             if (entry.State == EntityState.Added)
             {
                 ((Entities)entry.Entity).Guid = Guid.NewGuid();
-                ((Entities)entry.Entity).CreatedAt = DateTime.UtcNow;
+                ((Entities)entry.Entity).CreatedAt = Now;
                 ((Entities)entry.Entity).CreatedBy = currentUser;
 
                 ((Entities)entry.Entity).IsDeleted = false;
             }
-            ((Entities)entry.Entity).UpdatedAt = DateTime.UtcNow;
+            ((Entities)entry.Entity).UpdatedAt = Now;
             ((Entities)entry.Entity).UpdatedBy = currentUser;
+
+            if (entry.State == EntityState.Deleted)
+            {
+                entry.State = EntityState.Modified;
+                ((Entities)entry.Entity).IsDeleted = true;
+            }
         }
     }
 
@@ -53,6 +63,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasOne(d => d.LaundryService)
                 .WithMany()
                 .HasForeignKey(d => d.LaundryServiceGuid);
+                entity.Property(e => e.Status).HasDefaultValue("Pending");
         });
 
         modelBuilder.Entity<Price>(entity =>
@@ -60,7 +71,20 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.Value)
                 .HasColumnType("decimal(18, 2)"); // Thay đổi precision và scale tùy vào yêu cầu của bạn
         });
-    }
 
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(IEntities).IsAssignableFrom(entityType.ClrType))
+            {
+                var parameter = Expression.Parameter(entityType.ClrType, "e");
+                var propertyMethodInfo = typeof(EF).GetMethod("Property")!.MakeGenericMethod(typeof(bool));
+                var isDeletedProperty = Expression.Call(propertyMethodInfo, parameter, Expression.Constant("IsDeleted"));
+                var compareExpression = Expression.Equal(isDeletedProperty, Expression.Constant(false));
+                var lambda = Expression.Lambda(compareExpression, parameter);
+
+                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+            }
+        }
+    }
 }
 

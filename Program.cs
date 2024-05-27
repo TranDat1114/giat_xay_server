@@ -4,6 +4,7 @@ using giat_xay_server;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -100,6 +101,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseStaticFiles();
+
 app.UseCors();
 
 app.UseHttpsRedirection();
@@ -132,15 +136,13 @@ RequireAuthorization().WithTags("Identity");
 // });
 
 //crud Laundry Services 
-app.MapGroup("/laundryServices")
-    .MapGet("", async (ApplicationDbContext context) =>
+app.MapGet("laundry-services", async (ApplicationDbContext context) =>
     {
         return Results.Ok(await context.LaundryServices.ToListAsync());
     })
     .WithTags("Laundry Services");
 
-app.MapGroup("/laundryServices")
-    .MapPost("", async (LaundryService laundryService, ApplicationDbContext context) =>
+app.MapPost("laundry-services", [Authorize(Policy = "Admin")] async (LaundryService laundryService, ApplicationDbContext context) =>
     {
         context.LaundryServices.Add(laundryService);
         await context.SaveChangesAsync();
@@ -148,10 +150,9 @@ app.MapGroup("/laundryServices")
     })
     .RequireAuthorization()
     .WithTags("Laundry Services");
-app.MapGroup("/laundryServices")
-    .MapGet("{id}", async (Guid id, ApplicationDbContext context) =>
+app.MapGet("laundry-services/{guid}", async (Guid guid, ApplicationDbContext context) =>
     {
-        var laundryService = await context.LaundryServices.FindAsync(id);
+        var laundryService = await context.LaundryServices.FindAsync(guid);
         if (laundryService == null)
         {
             return Results.NotFound();
@@ -160,10 +161,9 @@ app.MapGroup("/laundryServices")
     })
     .WithTags("Laundry Services");
 
-app.MapGroup("/laundryServices")
-    .MapPut("{id}", async (Guid id, LaundryService laundryService, ApplicationDbContext context) =>
+app.MapPut("laundry-services/{guid}", [Authorize(Policy = "Admin")] async (Guid guid, LaundryService laundryService, ApplicationDbContext context) =>
     {
-        var existingLaundryService = await context.LaundryServices.FindAsync(id);
+        var existingLaundryService = await context.LaundryServices.FindAsync(guid);
         if (existingLaundryService == null)
         {
             return Results.NotFound();
@@ -173,10 +173,9 @@ app.MapGroup("/laundryServices")
         return Results.Ok(existingLaundryService);
     }).RequireAuthorization().WithTags("Laundry Services");
 
-app.MapGroup("/laundryServices")
-    .MapDelete("{id}", async (Guid id, ApplicationDbContext context) =>
+app.MapDelete("laundry-services/{guid}", [Authorize(Policy = "Admin")] async (Guid guid, ApplicationDbContext context) =>
     {
-        var laundryService = await context.LaundryServices.FindAsync(id);
+        var laundryService = await context.LaundryServices.FindAsync(guid);
         if (laundryService == null)
         {
             return Results.NotFound();
@@ -187,19 +186,232 @@ app.MapGroup("/laundryServices")
     }).RequireAuthorization().WithTags("Laundry Services");
 
 //crud Orders
-app.MapGroup("/orders")
-    .MapGet("", async (ApplicationDbContext context) =>
+app.MapGet("orders", [Authorize(Policy = "Admin")] async (ApplicationDbContext context) =>
     {
         return Results.Ok(await context.Orders.ToListAsync());
     })
+    .RequireAuthorization()
     .WithTags("Orders");
 
-app.MapGroup("/order")
-    .MapPost("", async (Order order, ApplicationDbContext context) =>
+app.MapPost("orders", async (Order order, ApplicationDbContext context) =>
     {
         context.Orders.Add(order);
         await context.SaveChangesAsync();
         return Results.Created($"/orders/{order.Guid}", order);
     }).WithTags("Orders");
+
+app.MapGet("orders/{guid}", async (Guid guid, ApplicationDbContext context) =>
+    {
+        var order = await context.Orders.FindAsync(guid);
+        if (order == null)
+        {
+            return Results.NotFound();
+        }
+        return Results.Ok(order);
+    })
+    .RequireAuthorization()
+    .WithTags("Orders");
+
+app.MapPut("orders/{guid}", async (Guid guid, Order order, ApplicationDbContext context) =>
+    {
+        var existingOrder = await context.Orders.FindAsync(guid);
+        if (existingOrder == null)
+        {
+            return Results.NotFound();
+        }
+
+        existingOrder.PickupAddress = order.PickupAddress;
+        existingOrder.DeliveryAddress = order.DeliveryAddress;
+        existingOrder.PhoneNumber = order.PhoneNumber;
+        existingOrder.Note = order.Note;
+        existingOrder.Status = order.Status;
+        existingOrder.LaundryServiceGuid = order.LaundryServiceGuid;
+        await context.SaveChangesAsync();
+        return Results.Ok(existingOrder);
+    }).RequireAuthorization().WithTags("Orders");
+
+app.MapDelete("orders/{guid}", async (Guid guid, ApplicationDbContext context) =>
+    {
+        var order = await context.Orders.FindAsync(guid);
+        if (order == null)
+        {
+            return Results.NotFound();
+        }
+        context.Orders.Remove(order);
+        await context.SaveChangesAsync();
+        return Results.NoContent();
+    }).RequireAuthorization().WithTags("Orders");
+
+//crud Prices
+app.MapGet("prices", async (ApplicationDbContext context) =>
+    {
+        return Results.Ok(await context.Prices.ToListAsync());
+    })
+    .WithTags("Prices");
+
+app.MapPost("prices", [Authorize(Policy = "Admin")] async (Price price, ApplicationDbContext context) =>
+    {
+        context.Prices.Add(price);
+        await context.SaveChangesAsync();
+        return Results.Created($"/prices/{price.Guid}", price);
+    }).RequireAuthorization().WithTags("Prices");
+
+app.MapGet("prices/{guid}", async (Guid guid, ApplicationDbContext context) =>
+    {
+        var price = await context.Prices.FindAsync(guid);
+        if (price == null)
+        {
+            return Results.NotFound();
+        }
+        return Results.Ok(price);
+    }).RequireAuthorization().WithTags("Prices");
+
+app.MapPut("prices/{guid}", [Authorize(Policy = "Admin")] async (Guid guid, Price price, ApplicationDbContext context) =>
+    {
+        var existingPrice = await context.Prices.FindAsync(guid);
+        if (existingPrice == null)
+        {
+            return Results.NotFound();
+        }
+        existingPrice.Value = price.Value;
+        existingPrice.Description = price.Description;
+        existingPrice.Weight = price.Weight;
+        existingPrice.LaundryServiceGuid = price.LaundryServiceGuid;
+        await context.SaveChangesAsync();
+        return Results.Ok(existingPrice);
+    }).RequireAuthorization().WithTags("Prices");
+
+app.MapDelete("prices/{guid}", [Authorize(Policy = "Admin")] async (Guid guid, ApplicationDbContext context) =>
+    {
+        var price = await context.Prices.FindAsync(guid);
+        if (price == null)
+        {
+            return Results.NotFound();
+        }
+        context.Prices.Remove(price);
+        await context.SaveChangesAsync();
+        return Results.NoContent();
+    }).RequireAuthorization().WithTags("Prices");
+
+// app.MapPost("images/upload", async (ImageUploadRequest request, ApplicationDbContext db) =>
+// {
+//     if (request.File == null || request.File.Length == 0)
+//     {
+//         return Results.BadRequest("No file uploaded.");
+//     }
+//     var uploads = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+//     if (!Directory.Exists(uploads))
+//     {
+//         Directory.CreateDirectory(uploads);
+//     }
+
+//     var filePath = Path.Combine(uploads, request.File.FileName);
+//     await using (var stream = new FileStream(filePath, FileMode.Create))
+//     {
+//         await request.File.CopyToAsync(stream);
+//     }
+
+//     var imageUrl = $"/uploads/{request.File.FileName}";
+
+//     var image = new Image
+//     {
+//         Url = imageUrl,
+//         Name = request.Name,
+//         GroupType = request.GroupType
+//     };
+
+//     db.Images.Add(image);
+//     await db.SaveChangesAsync();
+
+//     return Results.Ok(new { Url = imageUrl });
+// }).Accepts<IFormFile>("multipart/form-data").WithTags("Images").DisableAntiforgery();
+
+
+
+app.MapPost("/images/upload", async (HttpRequest request, ApplicationDbContext db) =>
+{
+    var form = await request.ReadFormAsync();
+    var file = form.Files["file"];
+    var name = form["name"].ToString();
+    var groupType = form["groupType"].ToString();
+
+    if (file == null || file.Length == 0)
+    {
+        return Results.BadRequest("No file uploaded.");
+    }
+
+    var uploads = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+    if (!Directory.Exists(uploads))
+    {
+        Directory.CreateDirectory(uploads);
+    }
+
+    var filePath = Path.Combine(uploads, file.FileName);
+    await using (var stream = new FileStream(filePath, FileMode.Create))
+    {
+        await file.CopyToAsync(stream);
+    }
+
+    var imageUrl = $"/uploads/{file.FileName}";
+
+    var image = new Image
+    {
+        Url = imageUrl,
+        Name = name,
+        GroupType = groupType
+    };
+
+    db.Images.Add(image);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { Url = imageUrl });
+}).Accepts<IFormFile>("multipart/form-data")
+    .WithTags("Images")
+    .DisableAntiforgery()
+    .WithOpenApi(
+        options =>
+        {
+            options.Summary = "Upload image";
+            options.Description = "Upload image to server and save to database with File name and group type.";
+            return options;
+        }
+    );
+
+app.MapGet("images", async (ApplicationDbContext context) =>
+{
+    return Results.Ok(await context.Images.ToListAsync());
+}).WithTags("Images");
+
+app.MapGet("images/group-type/{type}", async (string? type, ApplicationDbContext context) =>
+{
+    var image = await context.Images.Where(s => s.GroupType == type).ToListAsync();
+    if (image == null)
+    {
+        return Results.NotFound();
+    }
+    return Results.Ok(image);
+}).WithTags("Images");
+
+app.MapGet("images/{id}", async (int id, ApplicationDbContext context) =>
+{
+    var image = await context.Images.FindAsync(id);
+    if (image == null)
+    {
+        return Results.NotFound();
+    }
+    return Results.Ok(image);
+}).WithTags("Images");
+
+app.MapDelete("images/{id}", async (int id, ApplicationDbContext context) =>
+{
+    var image = await context.Images.FindAsync(id);
+    if (image == null)
+    {
+        return Results.NotFound();
+    }
+    context.Images.Remove(image);
+    await context.SaveChangesAsync();
+    return Results.NoContent();
+}).WithTags("Images");
 
 app.Run();
