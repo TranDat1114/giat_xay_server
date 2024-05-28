@@ -183,7 +183,7 @@ app.MapGet("orders", [Authorize(Policy = "Admin")] async ([AsParameters] Paginat
         try
         {
             var paginationService = new PaginationService(context);
-            var orders = await paginationService.GetPaginatedList<Order>(pagination, ["PhoneNumber", "Email"]);
+            var orders = await paginationService.GetPaginatedList<Order>(pagination, ["PhoneNumber", "Email", "OrderId"]);
             response = new ApiResponse<Pagination<Order>> { Success = true, Data = orders };
 
             return Results.Ok(response);
