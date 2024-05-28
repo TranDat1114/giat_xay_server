@@ -86,6 +86,7 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod();
     });
 });
+builder.Services.AddSingleton<PaginationService>();
 
 builder.Services.AddLogging();
 
@@ -124,18 +125,6 @@ app.MapGroup("/auth").MapGet("users/me", [Authorize] async (ClaimsPrincipal clai
 }).
 RequireAuthorization().WithTags("Identity");
 
-// app.MapGet("users/role/admin", [Authorize(Policy = "Admin")] (ClaimsPrincipal claims, ApplicationDbContext context) =>
-// {
-//     return "You are an admin!";
-// }).
-// RequireAuthorization();
-
-// app.MapGet("users/role/public", (ClaimsPrincipal claims, ApplicationDbContext context) =>
-// {
-//     return "You are an user!";
-// });
-
-//crud Laundry Services 
 app.MapGet("laundry-services", async (ApplicationDbContext context) =>
     {
         return Results.Ok(await context.LaundryServices.ToListAsync());
@@ -186,9 +175,32 @@ app.MapDelete("laundry-services/{guid}", [Authorize(Policy = "Admin")] async (Gu
     }).RequireAuthorization().WithTags("Laundry Services");
 
 //crud Orders
-app.MapGet("orders", [Authorize(Policy = "Admin")] async (ApplicationDbContext context) =>
+app.MapGet("orders", [Authorize(Policy = "Admin")] async ([AsParameters] Pagination pagination, ApplicationDbContext context, PaginationService paginationService) =>
     {
-        return Results.Ok(await context.Orders.ToListAsync());
+        ApiResponse<Pagination<Order>> response = new();
+        try
+        {
+            var (Items, Total) = paginationService.GetPagedItems(await context.Orders.ToListAsync(), pagination);
+            response = new()
+            {
+                Success = true,
+                Data = new Pagination<Order>
+                {
+                    Page = pagination.Page,
+                    PageSize = pagination.PageSize,
+                    Data = Items,
+                    Total = Total
+                }
+            };
+            return Results.Ok(response);
+        }
+        catch (Exception e)
+        {
+            return Results.BadRequest(
+                response = new ApiResponse<Pagination<Order>> { Success = false, Message = e.Message }
+            );
+        }
+
     })
     .RequireAuthorization()
     .WithTags("Orders");
@@ -292,41 +304,6 @@ app.MapDelete("prices/{guid}", [Authorize(Policy = "Admin")] async (Guid guid, A
         await context.SaveChangesAsync();
         return Results.NoContent();
     }).RequireAuthorization().WithTags("Prices");
-
-// app.MapPost("images/upload", async (ImageUploadRequest request, ApplicationDbContext db) =>
-// {
-//     if (request.File == null || request.File.Length == 0)
-//     {
-//         return Results.BadRequest("No file uploaded.");
-//     }
-//     var uploads = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
-//     if (!Directory.Exists(uploads))
-//     {
-//         Directory.CreateDirectory(uploads);
-//     }
-
-//     var filePath = Path.Combine(uploads, request.File.FileName);
-//     await using (var stream = new FileStream(filePath, FileMode.Create))
-//     {
-//         await request.File.CopyToAsync(stream);
-//     }
-
-//     var imageUrl = $"/uploads/{request.File.FileName}";
-
-//     var image = new Image
-//     {
-//         Url = imageUrl,
-//         Name = request.Name,
-//         GroupType = request.GroupType
-//     };
-
-//     db.Images.Add(image);
-//     await db.SaveChangesAsync();
-
-//     return Results.Ok(new { Url = imageUrl });
-// }).Accepts<IFormFile>("multipart/form-data").WithTags("Images").DisableAntiforgery();
-
-
 
 app.MapPost("/images/upload", async (HttpRequest request, ApplicationDbContext db) =>
 {

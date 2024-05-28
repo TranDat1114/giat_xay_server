@@ -8,5 +8,5 @@ public class LaundryService : Entities
     public string Name { get; set; } = string.Empty;
     [SwaggerIgnore]
     public List<Price> Prices { get; set; } = [];
-
+    public string? ImageUrl { get; set; }
 }
