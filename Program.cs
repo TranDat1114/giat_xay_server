@@ -86,7 +86,6 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod();
     });
 });
-builder.Services.AddSingleton<PaginationService>();
 
 builder.Services.AddLogging();
 
@@ -158,6 +157,9 @@ app.MapPut("laundry-services/{guid}", [Authorize(Policy = "Admin")] async (Guid 
             return Results.NotFound();
         }
         existingLaundryService.Name = laundryService.Name;
+        existingLaundryService.Description = laundryService.Description;
+        existingLaundryService.ImageUrl = laundryService.ImageUrl;
+
         await context.SaveChangesAsync();
         return Results.Ok(existingLaundryService);
     }).RequireAuthorization().WithTags("Laundry Services");
@@ -175,23 +177,15 @@ app.MapDelete("laundry-services/{guid}", [Authorize(Policy = "Admin")] async (Gu
     }).RequireAuthorization().WithTags("Laundry Services");
 
 //crud Orders
-app.MapGet("orders", [Authorize(Policy = "Admin")] async ([AsParameters] Pagination pagination, ApplicationDbContext context, PaginationService paginationService) =>
+app.MapGet("orders", [Authorize(Policy = "Admin")] async ([AsParameters] Pagination pagination, ApplicationDbContext context) =>
     {
         ApiResponse<Pagination<Order>> response = new();
         try
         {
-            var (Items, Total) = paginationService.GetPagedItems(await context.Orders.ToListAsync(), pagination);
-            response = new()
-            {
-                Success = true,
-                Data = new Pagination<Order>
-                {
-                    Page = pagination.Page,
-                    PageSize = pagination.PageSize,
-                    Data = Items,
-                    Total = Total
-                }
-            };
+            var paginationService = new PaginationService(context);
+            var orders = await paginationService.GetPaginatedList<Order>(pagination, ["PhoneNumber", "Email"]);
+            response = new ApiResponse<Pagination<Order>> { Success = true, Data = orders };
+
             return Results.Ok(response);
         }
         catch (Exception e)
@@ -231,7 +225,6 @@ app.MapPut("orders/{guid}", async (Guid guid, Order order, ApplicationDbContext 
         {
             return Results.NotFound();
         }
-
         existingOrder.PickupAddress = order.PickupAddress;
         existingOrder.DeliveryAddress = order.DeliveryAddress;
         existingOrder.PhoneNumber = order.PhoneNumber;

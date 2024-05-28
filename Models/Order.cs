@@ -9,6 +9,7 @@ public class Order : Entities
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int OrderId { get; set; }
     public string? Name { get; set; }
+    public string? Email { get; set; }
     public string PickupAddress { get; set; } = string.Empty;
     public string DeliveryAddress { get; set; } = string.Empty;
     public string PhoneNumber { get; set; } = string.Empty;
