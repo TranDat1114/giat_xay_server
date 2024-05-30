@@ -8,7 +8,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 {
     public DbSet<LaundryService> LaundryServices { get; set; } = null!;
     public DbSet<Order> Orders { get; set; } = null!;
-    public DbSet<Price> Prices { get; set; } = null!;
+    public DbSet<LaundryServiceType> LaundryServiceTypes { get; set; } = null!;
     public DbSet<Image> Images { get; set; } = null!;
     public override int SaveChanges()
     {
@@ -31,7 +31,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             if (entry.State == EntityState.Added)
             {
-                ((Entities)entry.Entity).Guid = Guid.NewGuid();
+                ((Entities)entry.Entity).Guid=Guid.NewGuid();
                 ((Entities)entry.Entity).CreatedAt = Now;
                 ((Entities)entry.Entity).CreatedBy = currentUser;
 
@@ -58,17 +58,15 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .HasDefaultValue("User");
         });
 
-        modelBuilder.Entity<Order>(entity =>
+        modelBuilder.Entity<LaundryServiceType>(entity =>
         {
-            entity.HasOne(d => d.LaundryService)
-                .WithMany()
-                .HasForeignKey(d => d.LaundryServiceGuid);
-                entity.Property(e => e.Status).HasDefaultValue("Pending");
+            entity.Property(e => e.Price)
+                .HasColumnType("decimal(18, 2)"); // Thay đổi precision và scale tùy vào yêu cầu của bạn
         });
 
-        modelBuilder.Entity<Price>(entity =>
+        modelBuilder.Entity<Order>(entity =>
         {
-            entity.Property(e => e.Value)
+            entity.Property(e => e.TotalPrice)
                 .HasColumnType("decimal(18, 2)"); // Thay đổi precision và scale tùy vào yêu cầu của bạn
         });
 

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace giat_xay_server.Migrations
 {
     /// <inheritdoc />
-    public partial class AddAutoIncrement : Migration
+    public partial class UpdateOrder : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -61,15 +61,14 @@ namespace giat_xay_server.Migrations
                 schema: "identity",
                 columns: table => new
                 {
-                    ImageId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ImageGuid = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Url = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     GroupType = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Images", x => x.ImageId);
+                    table.PrimaryKey("PK_Images", x => x.ImageGuid);
                 });
 
             migrationBuilder.CreateTable(
@@ -78,8 +77,9 @@ namespace giat_xay_server.Migrations
                 columns: table => new
                 {
                     Guid = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ImageUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IsDeleted = table.Column<bool>(type: "bit", nullable: false),
@@ -89,6 +89,40 @@ namespace giat_xay_server.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_LaundryServices", x => x.Guid);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Orders",
+                schema: "identity",
+                columns: table => new
+                {
+                    Guid = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    OrderId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Email = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    PickupAddress = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PickupDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeliveryAddress = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    DeliveryDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Weight = table.Column<int>(type: "int", nullable: true),
+                    Unit = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    TotalPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    Note = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    LaundryServiceTypeGuid = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    LaundryServiceGuid = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Orders", x => x.Guid);
                 });
 
             migrationBuilder.CreateTable(
@@ -209,46 +243,16 @@ namespace giat_xay_server.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Orders",
+                name: "LaundryServiceTypes",
                 schema: "identity",
                 columns: table => new
                 {
                     Guid = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    OrderId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    PickupAddress = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    DeliveryAddress = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Note = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Status = table.Column<string>(type: "nvarchar(max)", nullable: true, defaultValue: "Pending"),
-                    LaundryServiceGuid = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    UpdatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Orders", x => x.Guid);
-                    table.ForeignKey(
-                        name: "FK_Orders_LaundryServices_LaundryServiceGuid",
-                        column: x => x.LaundryServiceGuid,
-                        principalSchema: "identity",
-                        principalTable: "LaundryServices",
-                        principalColumn: "Guid",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Prices",
-                schema: "identity",
-                columns: table => new
-                {
-                    Guid = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Value = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    UnitValue = table.Column<int>(type: "int", nullable: false),
+                    ConditionType = table.Column<int>(type: "int", nullable: false),
+                    UnitType = table.Column<int>(type: "int", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Weight = table.Column<int>(type: "int", nullable: true),
                     LaundryServiceGuid = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -258,9 +262,9 @@ namespace giat_xay_server.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Prices", x => x.Guid);
+                    table.PrimaryKey("PK_LaundryServiceTypes", x => x.Guid);
                     table.ForeignKey(
-                        name: "FK_Prices_LaundryServices_LaundryServiceGuid",
+                        name: "FK_LaundryServiceTypes_LaundryServices_LaundryServiceGuid",
                         column: x => x.LaundryServiceGuid,
                         principalSchema: "identity",
                         principalTable: "LaundryServices",
@@ -315,15 +319,9 @@ namespace giat_xay_server.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Orders_LaundryServiceGuid",
+                name: "IX_LaundryServiceTypes_LaundryServiceGuid",
                 schema: "identity",
-                table: "Orders",
-                column: "LaundryServiceGuid");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Prices_LaundryServiceGuid",
-                schema: "identity",
-                table: "Prices",
+                table: "LaundryServiceTypes",
                 column: "LaundryServiceGuid");
         }
 
@@ -355,11 +353,11 @@ namespace giat_xay_server.Migrations
                 schema: "identity");
 
             migrationBuilder.DropTable(
-                name: "Orders",
+                name: "LaundryServiceTypes",
                 schema: "identity");
 
             migrationBuilder.DropTable(
-                name: "Prices",
+                name: "Orders",
                 schema: "identity");
 
             migrationBuilder.DropTable(

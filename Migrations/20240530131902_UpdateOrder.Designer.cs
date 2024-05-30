@@ -12,8 +12,8 @@ using giat_xay_server;
 namespace giat_xay_server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240528164846_AddOrderEmail")]
-    partial class AddOrderEmail
+    [Migration("20240530131902_UpdateOrder")]
+    partial class UpdateOrder
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -161,11 +161,9 @@ namespace giat_xay_server.Migrations
 
             modelBuilder.Entity("giat_xay_server.Image", b =>
                 {
-                    b.Property<int>("ImageId")
+                    b.Property<Guid>("ImageGuid")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ImageId"));
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("GroupType")
                         .IsRequired()
@@ -178,7 +176,7 @@ namespace giat_xay_server.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("ImageId");
+                    b.HasKey("ImageGuid");
 
                     b.ToTable("Images", "identity");
                 });
@@ -219,6 +217,52 @@ namespace giat_xay_server.Migrations
                     b.ToTable("LaundryServices", "identity");
                 });
 
+            modelBuilder.Entity("giat_xay_server.LaundryServiceType", b =>
+                {
+                    b.Property<Guid>("Guid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ConditionType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("LaundryServiceGuid")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<int>("UnitType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UnitValue")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Guid");
+
+                    b.HasIndex("LaundryServiceGuid");
+
+                    b.ToTable("LaundryServiceTypes", "identity");
+                });
+
             modelBuilder.Entity("giat_xay_server.Order", b =>
                 {
                     b.Property<Guid>("Guid")
@@ -235,6 +279,12 @@ namespace giat_xay_server.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("DeliveryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
 
@@ -244,8 +294,8 @@ namespace giat_xay_server.Migrations
                     b.Property<Guid>("LaundryServiceGuid")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Name")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<Guid>("LaundryServiceTypeGuid")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Note")
                         .HasColumnType("nvarchar(max)");
@@ -264,62 +314,33 @@ namespace giat_xay_server.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("PickupDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("nvarchar(max)")
-                        .HasDefaultValue("Pending");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("Guid");
-
-                    b.HasIndex("LaundryServiceGuid");
-
-                    b.ToTable("Orders", "identity");
-                });
-
-            modelBuilder.Entity("giat_xay_server.Price", b =>
-                {
-                    b.Property<Guid>("Guid")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid>("LaundryServiceGuid")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("Value")
+                    b.Property<decimal?>("TotalPrice")
                         .HasColumnType("decimal(18, 2)");
+
+                    b.Property<string>("Unit")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserName")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("Weight")
                         .HasColumnType("int");
 
                     b.HasKey("Guid");
 
-                    b.HasIndex("LaundryServiceGuid");
-
-                    b.ToTable("Prices", "identity");
+                    b.ToTable("Orders", "identity");
                 });
 
             modelBuilder.Entity("giat_xay_server.User", b =>
@@ -444,7 +465,7 @@ namespace giat_xay_server.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("giat_xay_server.Order", b =>
+            modelBuilder.Entity("giat_xay_server.LaundryServiceType", b =>
                 {
                     b.HasOne("giat_xay_server.LaundryService", "LaundryService")
                         .WithMany()
@@ -453,22 +474,6 @@ namespace giat_xay_server.Migrations
                         .IsRequired();
 
                     b.Navigation("LaundryService");
-                });
-
-            modelBuilder.Entity("giat_xay_server.Price", b =>
-                {
-                    b.HasOne("giat_xay_server.LaundryService", "LaundryService")
-                        .WithMany("Prices")
-                        .HasForeignKey("LaundryServiceGuid")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("LaundryService");
-                });
-
-            modelBuilder.Entity("giat_xay_server.LaundryService", b =>
-                {
-                    b.Navigation("Prices");
                 });
 #pragma warning restore 612, 618
         }

@@ -7,7 +7,7 @@ public class Image
 {
     [Key]
     [SwaggerIgnore]
-    public int ImageId { get; set; }
+    public Guid ImageGuid { get; set; }
     [SwaggerIgnore]
     public string Url { get; set; } = string.Empty;
     public string? Name { get; set; }

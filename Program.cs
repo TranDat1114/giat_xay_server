@@ -182,8 +182,11 @@ app.MapGet("orders", [Authorize(Policy = "Admin")] async ([AsParameters] Paginat
         ApiResponse<Pagination<Order>> response = new();
         try
         {
-            var paginationService = new PaginationService(context);
-            var orders = await paginationService.GetPaginatedList<Order>(pagination, ["PhoneNumber", "Email", "OrderId"]);
+            var paginationService = new PaginationService();
+            var orders = await paginationService.GetPaginatedList<Order>(pagination, context.Orders
+            .Where(s => pagination.Keyword == s.PhoneNumber 
+            || pagination.Keyword == s.Email 
+            || pagination.Keyword == s.UserName));
             response = new ApiResponse<Pagination<Order>> { Success = true, Data = orders };
 
             return Results.Ok(response);
@@ -246,57 +249,6 @@ app.MapDelete("orders/{guid}", async (Guid guid, ApplicationDbContext context) =
         await context.SaveChangesAsync();
         return Results.NoContent();
     }).RequireAuthorization().WithTags("Orders");
-
-//crud Prices
-app.MapGet("prices", async (ApplicationDbContext context) =>
-    {
-        return Results.Ok(await context.Prices.ToListAsync());
-    })
-    .WithTags("Prices");
-
-app.MapPost("prices", [Authorize(Policy = "Admin")] async (Price price, ApplicationDbContext context) =>
-    {
-        context.Prices.Add(price);
-        await context.SaveChangesAsync();
-        return Results.Created($"/prices/{price.Guid}", price);
-    }).RequireAuthorization().WithTags("Prices");
-
-app.MapGet("prices/{guid}", async (Guid guid, ApplicationDbContext context) =>
-    {
-        var price = await context.Prices.FindAsync(guid);
-        if (price == null)
-        {
-            return Results.NotFound();
-        }
-        return Results.Ok(price);
-    }).RequireAuthorization().WithTags("Prices");
-
-app.MapPut("prices/{guid}", [Authorize(Policy = "Admin")] async (Guid guid, Price price, ApplicationDbContext context) =>
-    {
-        var existingPrice = await context.Prices.FindAsync(guid);
-        if (existingPrice == null)
-        {
-            return Results.NotFound();
-        }
-        existingPrice.Value = price.Value;
-        existingPrice.Description = price.Description;
-        existingPrice.Weight = price.Weight;
-        existingPrice.LaundryServiceGuid = price.LaundryServiceGuid;
-        await context.SaveChangesAsync();
-        return Results.Ok(existingPrice);
-    }).RequireAuthorization().WithTags("Prices");
-
-app.MapDelete("prices/{guid}", [Authorize(Policy = "Admin")] async (Guid guid, ApplicationDbContext context) =>
-    {
-        var price = await context.Prices.FindAsync(guid);
-        if (price == null)
-        {
-            return Results.NotFound();
-        }
-        context.Prices.Remove(price);
-        await context.SaveChangesAsync();
-        return Results.NoContent();
-    }).RequireAuthorization().WithTags("Prices");
 
 app.MapPost("/images/upload", async (HttpRequest request, ApplicationDbContext db) =>
 {
