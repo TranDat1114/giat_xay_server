@@ -184,8 +184,8 @@ app.MapGet("orders", [Authorize(Policy = "Admin")] async ([AsParameters] Paginat
         {
             var paginationService = new PaginationService();
             var orders = await paginationService.GetPaginatedList<Order>(pagination, context.Orders
-            .Where(s => pagination.Keyword == s.PhoneNumber 
-            || pagination.Keyword == s.Email 
+            .Where(s => pagination.Keyword.IsNullOrEmpty() || pagination.Keyword == s.PhoneNumber
+            || pagination.Keyword == s.Email
             || pagination.Keyword == s.UserName));
             response = new ApiResponse<Pagination<Order>> { Success = true, Data = orders };
 
