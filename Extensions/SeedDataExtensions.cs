@@ -8,15 +8,15 @@ public static class SeedDataExtensions
     public static async Task SeedAsync(UserManager<User> userManager, RoleManager<IdentityRole> roleManager, ApplicationDbContext context)
     {
         // Ensure the Admin role exists
-        if (!await roleManager.RoleExistsAsync("Admin"))
+        if (!await roleManager.RoleExistsAsync(Roles.Admin.ToString()))
         {
-            await roleManager.CreateAsync(new IdentityRole("Admin"));
-            await roleManager.CreateAsync(new IdentityRole("User"));
-            await roleManager.CreateAsync(new IdentityRole("Employeed"));
+            await roleManager.CreateAsync(new IdentityRole(Roles.Admin.ToString()));
+            await roleManager.CreateAsync(new IdentityRole(Roles.User.ToString()));
+            await roleManager.CreateAsync(new IdentityRole(Roles.Manager.ToString()));
             // Ensure the Admin user exists
 
             var adminEmail = "admin@example.com";
-            var adminUser = new User { UserName = "admin@example.com", Email = adminEmail, EmailConfirmed = true, PhoneNumber = "1234567890", PhoneNumberConfirmed = true };
+            var adminUser = new User { UserName = "admin", Email = adminEmail, EmailConfirmed = true, PhoneNumber = "1234567890", PhoneNumberConfirmed = true };
             var user = await userManager.FindByEmailAsync(adminEmail);
 
             if (user == null)
@@ -24,9 +24,24 @@ public static class SeedDataExtensions
                 var createAdminUser = await userManager.CreateAsync(adminUser, "Admin@123456");
                 if (createAdminUser.Succeeded)
                 {
-                    await userManager.AddToRoleAsync(adminUser, "Admin");
+                    await userManager.AddToRoleAsync(adminUser, Roles.Admin.ToString());
                 }
             }
+
+            var demoUserEmail = "demo@gmail.com";
+            var demoUser = new User { UserName = "demouser", Email = demoUserEmail, EmailConfirmed = true, PhoneNumber = "0987654321", PhoneNumberConfirmed = true };
+            var demoUserExist = await userManager.FindByEmailAsync(demoUserEmail);
+
+            if (demoUserExist == null)
+            {
+                var createDemoUser = await userManager.CreateAsync(demoUser, "Demo@123456");
+                if (createDemoUser.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(demoUser, Roles.User.ToString());
+                }
+            }
+
+            #region Example Data
 
             var images = new List<Image>(){
                 new(){
@@ -81,16 +96,16 @@ public static class SeedDataExtensions
                     new(){
                         Description="Trên 5kg",
                         UnitValue=5,
-                        UnitType= UnitType.Weight,
-                        ConditionType= ConditionTYpe.GreaterThan,
+                        UnitType= UnitTypes.Weight,
+                        ConditionType= ConditionTypes.GreaterThan,
                         Price=20000,
                         LaundryServiceGuid = laundryService.Guid
                     },
                     new(){
                         Description="Dưới 5kg",
                         UnitValue=5,
-                        UnitType= UnitType.Weight,
-                        ConditionType= ConditionTYpe.LessThan,
+                        UnitType= UnitTypes.Weight,
+                        ConditionType= ConditionTypes.LessThan,
                         Price=100000,
                         LaundryServiceGuid = laundryService.Guid
                     },
@@ -98,37 +113,60 @@ public static class SeedDataExtensions
                 await context.LaundryServiceTypes.AddRangeAsync(laundryServiceTypes);
                 await context.SaveChangesAsync();
 
-                var laundryServiceType = await context.LaundryServiceTypes.FirstOrDefaultAsync(p => p.UnitValue == 5 && p.LaundryServiceGuid == laundryService.Guid && p.ConditionType == ConditionTYpe.GreaterThan);
+                var laundryServiceTypeOver5Kg = await context.LaundryServiceTypes.FirstOrDefaultAsync(p => p.UnitValue == 5 && p.LaundryServiceGuid == laundryService.Guid && p.ConditionType == ConditionTypes.GreaterThan);
 
-                if (laundryServiceType != null)
+                if (laundryServiceTypeOver5Kg != null)
                 {
                     var weight = 8;
                     var orders = new List<Order>()
                     {
                         new(){
                             LaundryServiceGuid=laundryService.Guid,
-                            LaundryServiceTypeGuid= laundryServiceType.Guid, //LaundryService chỉ có price khi là Giặt sấy nhanh và có weight
+                            LaundryServiceTypeGuid= laundryServiceTypeOver5Kg.Guid, //LaundryService chỉ có price khi là Giặt sấy nhanh và có weight
                             Email="admin@example.com",
                             PhoneNumber="0123456789",
-                            DeliveryAddress="Số 1, Đường 1, Phường 1, Quận 1, TP.HCM",
+                            Address="Số 1, Đường 1, Phường 1, Quận 1, TP.HCM",
                             UserName="Nguyễn Văn A",
-                            PickupAddress="Số 1, Đường 1, Phường 1, Quận 1, TP.HCM",
                             Note="Giao hàng sau 1 ngày",
                             Status=OrderStatus.Done.ToString(),
                             Unit="Kg",
-                            PickupDate=DateTime.UtcNow,
                             DeliveryDate=DateTime.UtcNow.AddDays(1),
-                            Description="Giặt sấy nhanh",
                             Weight=weight,
-                            TotalPrice= laundryServiceType.Price * (laundryServiceType.ConditionType == ConditionTYpe.GreaterThan ? weight : 1) ,
+                            TotalPrice= laundryServiceTypeOver5Kg.Price * (laundryServiceTypeOver5Kg.ConditionType == ConditionTypes.GreaterThan ? weight : 1) ,
                         }
                     };
                     await context.Orders.AddRangeAsync(orders);
                     await context.SaveChangesAsync();
+                }
 
+                var laundryServiceTypeUnder5Kg = await context.LaundryServiceTypes.FirstOrDefaultAsync(p => p.UnitValue == 5 && p.LaundryServiceGuid == laundryService.Guid && p.ConditionType == ConditionTypes.LessThan);
+
+                if (laundryServiceTypeUnder5Kg != null)
+                {
+                    var weight = 3;
+                    var orders = new List<Order>()
+                    {
+                        new(){
+                            LaundryServiceGuid=laundryService.Guid,
+                            LaundryServiceTypeGuid= laundryServiceTypeUnder5Kg.Guid, //LaundryService chỉ có price khi là Giặt sấy nhanh và có weight
+                            Email="demo@gmail.com",
+                            PhoneNumber="0987654321",
+                            Address="Số 2, Đường 2, Phường 2, Quận 2, TP.HCM",
+                            UserName="Nguyễn Văn B",
+                            Note="Giao hàng sau 2 ngày",
+                            Status=OrderStatus.Done.ToString(),
+                            Unit="Kg",
+                            DeliveryDate=DateTime.UtcNow.AddDays(2),
+                            Weight=weight,
+                            TotalPrice= laundryServiceTypeUnder5Kg.Price * (laundryServiceTypeUnder5Kg.ConditionType == ConditionTypes.GreaterThan ? weight : 1) ,
+                        }
+                    };
+                    await context.Orders.AddRangeAsync(orders);
+                    await context.SaveChangesAsync();
                 }
             }
         }
+        #endregion
     }
 
     // Tạo dữ liệu mẫu 

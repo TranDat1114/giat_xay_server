@@ -31,7 +31,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             if (entry.State == EntityState.Added)
             {
-                ((Entities)entry.Entity).Guid=Guid.NewGuid();
+                ((Entities)entry.Entity).Guid = Guid.NewGuid();
                 ((Entities)entry.Entity).CreatedAt = Now;
                 ((Entities)entry.Entity).CreatedBy = currentUser;
 
@@ -54,8 +54,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.HasDefaultSchema("identity");
         modelBuilder.Entity<User>(entity =>
         {
-            entity.Property(e => e.Role)
-                .HasDefaultValue("User");
+            entity.Property(e => e.Avatar).HasDefaultValue("https://fastly.picsum.photos/id/228/600/600.jpg?hmac=TDkN4LVBjPRvjQqMs-TT63NvrvlB-FhcHIilfj8U4xg");
         });
 
         modelBuilder.Entity<LaundryServiceType>(entity =>

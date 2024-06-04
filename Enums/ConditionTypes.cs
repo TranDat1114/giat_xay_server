@@ -1,6 +1,6 @@
 ﻿namespace giat_xay_server;
 
-public enum ConditionTYpe
+public enum ConditionTypes
 {
     Equal,
     GreaterThan,

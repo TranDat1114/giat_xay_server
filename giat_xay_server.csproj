@@ -16,6 +16,11 @@
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.6.2" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="6.6.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.5" />
+    <PackageReference Include="AutoMapper" Version="13.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="MapperProfile\" />
   </ItemGroup>
 
 </Project>

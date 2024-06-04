@@ -1,10 +1,12 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using giat_xay_server;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -14,54 +16,67 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
+
+    // Cấu hình bảo mật JWT cho Swagger
+    var securityScheme = new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Nhập JWT Bearer token vào ô bên dưới",
+
+        Reference = new OpenApiReference
+        {
+            Type = ReferenceType.SecurityScheme,
+            Id = "Bearer"
+        }
+    };
+
+    c.AddSecurityDefinition("Bearer", securityScheme);
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            securityScheme,
+            Array.Empty<string>()
+        }
+    });
+});
+
+var jwtSettings = builder.Configuration.GetSection("JWT");
+
+builder.Services.AddAuthentication(
     options =>
     {
-        options.SwaggerDoc("v1", new OpenApiInfo { Title = "Giat xay API", Version = "v1" });
-        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    }).AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
         {
-            In = ParameterLocation.Header,
-            Description = "Please enter into field the word 'Bearer' followed by a space and the JWT value.",
-            Name = "Authorization",
-            Type = SecuritySchemeType.ApiKey,
-            BearerFormat = "JWT",
-            Scheme = "Bearer"
-        });
-        options.AddSecurityRequirement(new OpenApiSecurityRequirement {
+            options.RequireHttpsMetadata = false;
+            options.SaveToken = true;
+            options.TokenValidationParameters = new TokenValidationParameters
             {
-                new OpenApiSecurityScheme {
-                    Reference = new OpenApiReference {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    }
-                },
-                Array.Empty<string>()
-            }
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                RequireExpirationTime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwtSettings["Issuer"] ?? "FUCK",
+                ValidAudience = jwtSettings["Audience"] ?? "FUCK",
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? "FUCK"))
+            };
         });
-    }
-);
-
-builder.Services.AddAuthentication()
-   .AddBearerToken(IdentityConstants.BearerScheme)
-;
-
-// .AddJwtBearer(options =>
-// {
-// options.TokenValidationParameters = new TokenValidationParameters
-// {
-//     ValidateIssuer = true,
-//     ValidateAudience = true,
-//     ValidateLifetime = true,
-//     ValidateIssuerSigningKey = true,
-//     ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "FUCK",
-//     ValidAudience = builder.Configuration["Jwt:Audience"] ?? "FUCK",
-//     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "FUCK"))
-// };
-// });
 // .AddCookie(IdentityConstants.ApplicationScheme);
+
+builder.Services.AddAutoMapper(typeof(Program).Assembly);
+
 builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("Admin", policy => policy.RequireClaim(ClaimTypes.Role, "Admin"))
-    .AddPolicy("User", policy => policy.RequireClaim(ClaimTypes.Role, "User"));
+    .AddPolicy(RolesString.Admin, policy => policy.RequireClaim(ClaimTypes.Role, RolesString.Admin))
+    .AddPolicy(RolesString.User, policy => policy.RequireClaim(ClaimTypes.Role, RolesString.User));
 
 builder.Services.AddIdentityCore<User>(
     options =>
@@ -73,6 +88,7 @@ builder.Services.AddIdentityCore<User>(
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders()
     .AddApiEndpoints();
+
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("LocalDb")));
@@ -108,10 +124,65 @@ app.UseCors();
 
 app.UseHttpsRedirection();
 
-app.MapGroup("/auth")
-    .MapIdentityApi<User>().WithTags("Identity");
+var auth = app.MapGroup("/auth").WithTags("Identity");
 
-app.MapGroup("/auth").MapGet("users/me", [Authorize] async (ClaimsPrincipal claims, ApplicationDbContext context) =>
+auth.MapPost("/register", async (UserManager<User> userManager, RegisterRequest request) =>
+{
+    var userData = new User { UserName = request.UserName, Email = request.Email };
+
+    var user = await userManager.FindByEmailAsync(userData.Email);
+
+    if (user != null)
+    {
+        return Results.BadRequest("Email already exists");
+    }
+
+    var result = await userManager.CreateAsync(userData, request.Password);
+
+    if (result.Succeeded)
+    {
+        await userManager.AddToRoleAsync(userData, Roles.User.ToString());
+        return Results.Ok();
+    }
+    else
+    {
+        return Results.BadRequest(result.Errors);
+    }
+});
+
+// Đăng nhập endpoint
+auth.MapPost("/login", async (UserManager<User> userManager, IConfiguration configuration, LoginRequest request) =>
+{
+    var user = await userManager.FindByEmailAsync(request.Email);
+    if (user != null && await userManager.CheckPasswordAsync(user, request.Password))
+    {
+        var role = await userManager.GetRolesAsync(user);
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.Name, user.UserName!),
+                new Claim(ClaimTypes.Email, user.Email!),
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.Role, role?.FirstOrDefault() == RolesString.Admin?RolesString.Admin:RolesString.User)
+            ]),
+            Expires = DateTime.UtcNow.AddMinutes(int.Parse(jwtSettings["ExpirationInMinutes"] ?? "60")),
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? "FUCK")), SecurityAlgorithms.HmacSha256Signature),
+            Issuer = jwtSettings["Issuer"] ?? "FUCK",
+            Audience = jwtSettings["Audience"] ?? "FUCK",
+        };
+
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        var tokenString = tokenHandler.WriteToken(token);
+
+        return Results.Ok(new { AccessToken = tokenString });
+    }
+
+    return Results.Unauthorized();
+});
+
+auth.MapGet("users/me", [Authorize] async (ClaimsPrincipal claims, UserManager<User> userManager, ApplicationDbContext context) =>
 {
     string userId = claims.Claims.First(c => c.Type == ClaimTypes.NameIdentifier).Value;
     var user = await context.Users.FindAsync(userId);
@@ -119,10 +190,10 @@ app.MapGroup("/auth").MapGet("users/me", [Authorize] async (ClaimsPrincipal clai
     {
         return Results.NotFound();
     }
-    user.Role = claims.Claims.First(c => c.Type == ClaimTypes.Role).Value;
+    user.Role = JsonSerializer.Serialize(await userManager.GetRolesAsync(user));
     return Results.Ok(user);
 }).
-RequireAuthorization().WithTags("Identity");
+RequireAuthorization();
 
 app.MapGet("laundry-services", async (ApplicationDbContext context) =>
     {
@@ -130,7 +201,7 @@ app.MapGet("laundry-services", async (ApplicationDbContext context) =>
     })
     .WithTags("Laundry Services");
 
-app.MapPost("laundry-services", [Authorize(Policy = "Admin")] async (LaundryService laundryService, ApplicationDbContext context) =>
+app.MapPost("laundry-services", [Authorize(Policy = RolesString.Admin)] async (LaundryService laundryService, ApplicationDbContext context) =>
     {
         context.LaundryServices.Add(laundryService);
         await context.SaveChangesAsync();
@@ -149,7 +220,7 @@ app.MapGet("laundry-services/{guid}", async (Guid guid, ApplicationDbContext con
     })
     .WithTags("Laundry Services");
 
-app.MapPut("laundry-services/{guid}", [Authorize(Policy = "Admin")] async (Guid guid, LaundryService laundryService, ApplicationDbContext context) =>
+app.MapPut("laundry-services/{guid}", [Authorize(Policy = RolesString.Admin)] async (Guid guid, LaundryService laundryService, ApplicationDbContext context) =>
     {
         var existingLaundryService = await context.LaundryServices.FindAsync(guid);
         if (existingLaundryService == null)
@@ -164,7 +235,7 @@ app.MapPut("laundry-services/{guid}", [Authorize(Policy = "Admin")] async (Guid 
         return Results.Ok(existingLaundryService);
     }).RequireAuthorization().WithTags("Laundry Services");
 
-app.MapDelete("laundry-services/{guid}", [Authorize(Policy = "Admin")] async (Guid guid, ApplicationDbContext context) =>
+app.MapDelete("laundry-services/{guid}", [Authorize(Policy = RolesString.Admin)] async (Guid guid, ApplicationDbContext context) =>
     {
         var laundryService = await context.LaundryServices.FindAsync(guid);
         if (laundryService == null)
@@ -176,40 +247,70 @@ app.MapDelete("laundry-services/{guid}", [Authorize(Policy = "Admin")] async (Gu
         return Results.NoContent();
     }).RequireAuthorization().WithTags("Laundry Services");
 
+app.MapGet("income", async (ApplicationDbContext context) =>
+    {
+        var income = new Income()
+        {
+            TotalIncome = await context.Orders.SumAsync(s => s.TotalPrice),
+            TotalOrders = await context.Orders.CountAsync(),
+            TotalIncomeThisWeek = await context.Orders.Where(s => s.CreatedAt >= DateTime.UtcNow.AddDays(-7)).SumAsync(s => s.TotalPrice),
+            TotalIncomeThisMonth = await context.Orders.Where(s => s.CreatedAt.Month == DateTime.UtcNow.Month).SumAsync(s => s.TotalPrice),
+            TotalIncomeThisYear = await context.Orders.Where(s => s.CreatedAt.Year == DateTime.UtcNow.Year).SumAsync(s => s.TotalPrice),
+            TotalOrdersThisWeek = await context.Orders.Where(s => s.CreatedAt >= DateTime.UtcNow.AddDays(-7)).CountAsync(),
+            TotalOrdersThisMonth = await context.Orders.Where(s => s.CreatedAt.Month == DateTime.UtcNow.Month).CountAsync(),
+            TotalOrdersThisYear = await context.Orders.Where(s => s.CreatedAt.Year == DateTime.UtcNow.Year).CountAsync(),
+        };
+        return Results.Ok(income);
+    })
+    .WithTags("Income");
+
+var order = app.MapGroup("/orders").WithTags("Orders");
+
 //crud Orders
-app.MapGet("orders", [Authorize(Policy = "Admin")] async ([AsParameters] Pagination pagination, ApplicationDbContext context) =>
+order.MapGet("", [Authorize(Policy = RolesString.Admin)] async ([AsParameters] Pagination pagination, ApplicationDbContext context) =>
     {
         ApiResponse<Pagination<Order>> response = new();
         try
         {
-            var paginationService = new PaginationService();
-            var orders = await paginationService.GetPaginatedList<Order>(pagination, context.Orders
-            .Where(s => pagination.Keyword.IsNullOrEmpty() || pagination.Keyword == s.PhoneNumber
-            || pagination.Keyword == s.Email
-            || pagination.Keyword == s.UserName));
-            response = new ApiResponse<Pagination<Order>> { Success = true, Data = orders };
+            PaginationService paginationService = new();
+            var orders = await paginationService.GetPaginatedList(pagination, context.Orders);
 
+            if (orders.Data != null && orders.Data.Any())
+            {
+                foreach (var order in orders.Data)
+                {
+                    var laundryService = await context.LaundryServices.FindAsync(order.LaundryServiceGuid);
+                    var laundryServiceType = await context.LaundryServiceTypes.FindAsync(order.LaundryServiceTypeGuid);
+                    order.LaundryServiceName = laundryService?.Name;
+                    order.LaundryServiceTypeDescription = laundryServiceType?.Description;
+                }
+            }
+
+            response.Result = orders;
+            response.Success = true;
+            response.Message = "Get orders successfully";
             return Results.Ok(response);
         }
         catch (Exception e)
         {
             return Results.BadRequest(
-                response = new ApiResponse<Pagination<Order>> { Success = false, Message = e.Message }
+                new
+                {
+                    e.Message
+                }
             );
         }
-
     })
-    .RequireAuthorization()
-    .WithTags("Orders");
+    .RequireAuthorization();
 
-app.MapPost("orders", async (Order order, ApplicationDbContext context) =>
+order.MapPost("", async (Order order, ApplicationDbContext context) =>
     {
         context.Orders.Add(order);
         await context.SaveChangesAsync();
         return Results.Created($"/orders/{order.Guid}", order);
-    }).WithTags("Orders");
+    });
 
-app.MapGet("orders/{guid}", async (Guid guid, ApplicationDbContext context) =>
+order.MapGet("{guid}", async (Guid guid, ApplicationDbContext context) =>
     {
         var order = await context.Orders.FindAsync(guid);
         if (order == null)
@@ -218,27 +319,29 @@ app.MapGet("orders/{guid}", async (Guid guid, ApplicationDbContext context) =>
         }
         return Results.Ok(order);
     })
-    .RequireAuthorization()
-    .WithTags("Orders");
+    .RequireAuthorization();
 
-app.MapPut("orders/{guid}", async (Guid guid, Order order, ApplicationDbContext context) =>
+order.MapPut("{guid}", async (Guid guid, Order order, ApplicationDbContext context) =>
     {
         var existingOrder = await context.Orders.FindAsync(guid);
         if (existingOrder == null)
         {
             return Results.NotFound();
         }
-        existingOrder.PickupAddress = order.PickupAddress;
-        existingOrder.DeliveryAddress = order.DeliveryAddress;
+        existingOrder.UserName = order.UserName;
+        existingOrder.Email = order.Email;
+        existingOrder.Address = order.Address;
+        existingOrder.DeliveryDate = order.DeliveryDate;
         existingOrder.PhoneNumber = order.PhoneNumber;
         existingOrder.Note = order.Note;
         existingOrder.Status = order.Status;
         existingOrder.LaundryServiceGuid = order.LaundryServiceGuid;
+        existingOrder.LaundryServiceTypeGuid = order.LaundryServiceTypeGuid;
         await context.SaveChangesAsync();
         return Results.Ok(existingOrder);
-    }).RequireAuthorization().WithTags("Orders");
+    }).RequireAuthorization();
 
-app.MapDelete("orders/{guid}", async (Guid guid, ApplicationDbContext context) =>
+order.MapDelete("{guid}", async (Guid guid, ApplicationDbContext context) =>
     {
         var order = await context.Orders.FindAsync(guid);
         if (order == null)
@@ -248,9 +351,10 @@ app.MapDelete("orders/{guid}", async (Guid guid, ApplicationDbContext context) =
         context.Orders.Remove(order);
         await context.SaveChangesAsync();
         return Results.NoContent();
-    }).RequireAuthorization().WithTags("Orders");
+    }).RequireAuthorization();
 
-app.MapPost("/images/upload", async (HttpRequest request, ApplicationDbContext db) =>
+var image = app.MapGroup("/images").WithTags("Images");
+image.MapPost("/upload", async (HttpRequest request, ApplicationDbContext db) =>
 {
     var form = await request.ReadFormAsync();
     var file = form.Files["file"];
@@ -288,7 +392,6 @@ app.MapPost("/images/upload", async (HttpRequest request, ApplicationDbContext d
 
     return Results.Ok(new { Url = imageUrl });
 }).Accepts<IFormFile>("multipart/form-data")
-    .WithTags("Images")
     .DisableAntiforgery()
     .WithOpenApi(
         options =>
@@ -299,12 +402,12 @@ app.MapPost("/images/upload", async (HttpRequest request, ApplicationDbContext d
         }
     );
 
-app.MapGet("images", async (ApplicationDbContext context) =>
+image.MapGet("", async (ApplicationDbContext context) =>
 {
     return Results.Ok(await context.Images.ToListAsync());
-}).WithTags("Images");
+});
 
-app.MapGet("images/group-type/{type}", async (string? type, ApplicationDbContext context) =>
+image.MapGet("group-type/{type}", async (string? type, ApplicationDbContext context) =>
 {
     var image = await context.Images.Where(s => s.GroupType == type).ToListAsync();
     if (image == null)
@@ -312,9 +415,9 @@ app.MapGet("images/group-type/{type}", async (string? type, ApplicationDbContext
         return Results.NotFound();
     }
     return Results.Ok(image);
-}).WithTags("Images");
+});
 
-app.MapGet("images/{id}", async (int id, ApplicationDbContext context) =>
+image.MapGet("{id}", async (int id, ApplicationDbContext context) =>
 {
     var image = await context.Images.FindAsync(id);
     if (image == null)
@@ -322,9 +425,9 @@ app.MapGet("images/{id}", async (int id, ApplicationDbContext context) =>
         return Results.NotFound();
     }
     return Results.Ok(image);
-}).WithTags("Images");
+});
 
-app.MapDelete("images/{id}", async (int id, ApplicationDbContext context) =>
+image.MapDelete("images/{id}", async (int id, ApplicationDbContext context) =>
 {
     var image = await context.Images.FindAsync(id);
     if (image == null)
@@ -334,6 +437,6 @@ app.MapDelete("images/{id}", async (int id, ApplicationDbContext context) =>
     context.Images.Remove(image);
     await context.SaveChangesAsync();
     return Results.NoContent();
-}).WithTags("Images");
+});
 
 app.Run();

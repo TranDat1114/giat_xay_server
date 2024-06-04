@@ -1,6 +1,6 @@
 ﻿namespace giat_xay_server;
 
-public enum UnitType
+public enum UnitTypes
 {
     Weight, //Kg
     Unit, //Bộ, Chiếc, Cái

@@ -10,23 +10,23 @@ public class Order : Entities
     public int OrderId { get; set; }
     public string? UserName { get; set; }
     public string? Email { get; set; }
-    public string PickupAddress { get; set; } = string.Empty;
-    [SwaggerIgnore]
-    public DateTime? PickupDate { get; set; }
-    public string DeliveryAddress { get; set; } = string.Empty;
-    [SwaggerIgnore]
-    public DateTime? DeliveryDate { get; set; }
+    public string Address { get; set; } = string.Empty;
+    public DateTime DeliveryDate { get; set; }
     public string PhoneNumber { get; set; } = string.Empty;
     public int? Weight { get; set; }
     public string? Unit { get; set; }
-    public decimal? TotalPrice { get; set; }
+    public decimal TotalPrice { get; set; }
     public string? Note { get; set; }
     [SwaggerIgnore]
     public string? Status { get; set; }
-    public string? Description { get; set; }
     public Guid LaundryServiceTypeGuid { get; set; }
     public Guid LaundryServiceGuid { get; set; }
+    [NotMapped]
     [SwaggerIgnore]
-    [ForeignKey("LaundryServiceGuid")]
-    public LaundryServiceType LaundryServiceType { get; set; } = null!;
+    public string? LaundryServiceTypeDescription { get; set; } = string.Empty;
+    [NotMapped]
+    [SwaggerIgnore]
+    public string? LaundryServiceName { get; set; } = string.Empty;
+    // public Guid? PaymentMethodGuid { get; set; }
+
 }

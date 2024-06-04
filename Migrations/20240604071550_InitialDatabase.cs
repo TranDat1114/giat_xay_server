@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace giat_xay_server.Migrations
 {
     /// <inheritdoc />
-    public partial class UpdateOrder : Migration
+    public partial class InitialDatabase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -35,7 +35,9 @@ namespace giat_xay_server.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Role = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "User"),
+                    Address = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FullName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Avatar = table.Column<string>(type: "nvarchar(max)", nullable: true, defaultValue: "https://fastly.picsum.photos/id/228/600/600.jpg?hmac=TDkN4LVBjPRvjQqMs-TT63NvrvlB-FhcHIilfj8U4xg"),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -101,17 +103,14 @@ namespace giat_xay_server.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     UserName = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    PickupAddress = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    PickupDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    DeliveryAddress = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    DeliveryDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Address = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    DeliveryDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Weight = table.Column<int>(type: "int", nullable: true),
                     Unit = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    TotalPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    TotalPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     Note = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Status = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     LaundryServiceTypeGuid = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     LaundryServiceGuid = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
