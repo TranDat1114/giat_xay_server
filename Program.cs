@@ -267,7 +267,6 @@ inCome.MapGet("", async (ApplicationDbContext context) =>
         };
         return Results.Ok(income);
     });
-
 var order = app.MapGroup("/orders").WithTags("Orders");
 
 order.MapGet("", [Authorize(Policy = RolesString.Admin)] async ([AsParameters] Pagination pagination, ApplicationDbContext context) =>
@@ -286,10 +285,18 @@ order.MapGet("", [Authorize(Policy = RolesString.Admin)] async ([AsParameters] P
                     var laundryServiceType = await context.LaundryServiceTypes.FindAsync(order.LaundryServiceTypeGuid);
                     order.LaundryServiceName = laundryService?.Name;
                     order.LaundryServiceTypeDescription = laundryServiceType?.Description;
-
-                    order.TotalPrice = OrderPriceExtensions.TotalPrice(order.Value ?? 0, laundryServiceType!, laundryServiceType!.UnitType);
+                    if (order.TotalPrice == 0 && order.Value != null && laundryServiceType != null)
+                    {
+                        order.TotalPrice = OrderPriceExtensions.TotalPrice(order.Value ?? 0, laundryServiceType!, laundryServiceType!.UnitType);
+                        context.Orders.Update(order);
+                    }
+                    else
+                    {
+                        order.TotalPrice = order.TotalPrice;
+                    }
                 }
             }
+            await context.SaveChangesAsync();
 
             response.Result = orders;
             response.Success = true;
