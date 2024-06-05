@@ -7,7 +7,7 @@ namespace giat_xay_server;
 
 public class PaginationService()
 {
-    public async Task<Pagination<T>> GetPaginatedList<T>(Pagination pagination, IQueryable<T> query) where T : class
+    public async Task<Pagination<T>> GetPaginatedList<T>(Pagination pagination, IQueryable<T> query) where T : Entities 
     {
         if (pagination.PageIndex < 1 || pagination.PageSize < 1)
         {
@@ -32,6 +32,7 @@ public class PaginationService()
         var data = await query
             .Skip((PageIndex - 1) * PageSize)
             .Take(PageSize)
+            .OrderBy(x => x.CreatedAt)
             .ToArrayAsync();
         return new Pagination<T>
         {
@@ -42,5 +43,5 @@ public class PaginationService()
         };
     }
 
-  
+
 }

@@ -285,14 +285,16 @@ order.MapGet("", [Authorize(Policy = RolesString.Admin)] async ([AsParameters] P
                     var laundryServiceType = await context.LaundryServiceTypes.FindAsync(order.LaundryServiceTypeGuid);
                     order.LaundryServiceName = laundryService?.Name;
                     order.LaundryServiceTypeDescription = laundryServiceType?.Description;
+                    
                     if (order.TotalPrice == 0 && order.Value != null && laundryServiceType != null)
                     {
                         order.TotalPrice = OrderPriceExtensions.TotalPrice(order.Value ?? 0, laundryServiceType!, laundryServiceType!.UnitType);
-                        context.Orders.Update(order);
-                    }
-                    else
-                    {
-                        order.TotalPrice = order.TotalPrice;
+                        var existingOrder = await context.Orders.FindAsync(order.Guid);
+                        if (existingOrder != null)
+                        {
+                            existingOrder.TotalPrice = order.TotalPrice;
+                            context.Orders.Update(existingOrder);
+                        }
                     }
                 }
             }
@@ -315,7 +317,7 @@ order.MapGet("", [Authorize(Policy = RolesString.Admin)] async ([AsParameters] P
     })
     .RequireAuthorization();
 
-order.MapPost("", [Authorize] async (Order order, ApplicationDbContext context) =>
+order.MapPost("", async (Order order, ApplicationDbContext context) =>
     {
         order.Status = OrderStatus.Pending.ToString();
         context.Orders.Add(order);

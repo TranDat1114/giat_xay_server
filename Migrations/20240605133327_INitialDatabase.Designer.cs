@@ -12,8 +12,8 @@ using giat_xay_server;
 namespace giat_xay_server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240604142614_InitialDatabase")]
-    partial class InitialDatabase
+    [Migration("20240605133327_INitialDatabase")]
+    partial class INitialDatabase
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -226,6 +226,9 @@ namespace giat_xay_server.Migrations
                     b.Property<int>("ConditionType")
                         .HasColumnType("int");
 
+                    b.Property<int>("ConditionValue")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -296,12 +299,6 @@ namespace giat_xay_server.Migrations
 
                     b.Property<string>("Note")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("OrderId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrderId"));
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
