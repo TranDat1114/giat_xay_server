@@ -88,32 +88,34 @@ public static class SeedDataExtensions
             await context.LaundryServices.AddRangeAsync(laundryServices);
             await context.SaveChangesAsync();
 
-            var laundryService = await context.LaundryServices.FirstOrDefaultAsync(p => p.Name == "Giặt sấy nhanh");
-            if (laundryService != null)
+            var laundryServiceSayNhanh = await context.LaundryServices.FirstOrDefaultAsync(p => p.Name == "Giặt sấy nhanh");
+            if (laundryServiceSayNhanh != null)
             {
                 var laundryServiceTypes = new List<LaundryServiceType>()
                 {
                     new(){
                         Description="Trên 5kg",
-                        UnitValue=5,
+                        UnitValue=1,
+                        ConditionValue = 5,
                         UnitType= UnitTypes.Weight,
                         ConditionType= ConditionTypes.GreaterThan,
                         Price=20000,
-                        LaundryServiceGuid = laundryService.Guid
+                        LaundryServiceGuid = laundryServiceSayNhanh.Guid
                     },
                     new(){
                         Description="Dưới 5kg",
-                        UnitValue=5,
-                        UnitType= UnitTypes.Weight,
+                        UnitValue=1,
+                        ConditionValue = 5,
+                        UnitType= UnitTypes.Time,
                         ConditionType= ConditionTypes.LessThan,
                         Price=100000,
-                        LaundryServiceGuid = laundryService.Guid
+                        LaundryServiceGuid = laundryServiceSayNhanh.Guid
                     },
                 };
                 await context.LaundryServiceTypes.AddRangeAsync(laundryServiceTypes);
                 await context.SaveChangesAsync();
 
-                var laundryServiceTypeOver5Kg = await context.LaundryServiceTypes.FirstOrDefaultAsync(p => p.UnitValue == 5 && p.LaundryServiceGuid == laundryService.Guid && p.ConditionType == ConditionTypes.GreaterThan);
+                var laundryServiceTypeOver5Kg = await context.LaundryServiceTypes.FirstOrDefaultAsync(p => p.ConditionValue == 5 && p.LaundryServiceGuid == laundryServiceSayNhanh.Guid && p.ConditionType == ConditionTypes.GreaterThan);
 
                 if (laundryServiceTypeOver5Kg != null)
                 {
@@ -121,7 +123,7 @@ public static class SeedDataExtensions
                     var orders = new List<Order>()
                     {
                         new(){
-                            LaundryServiceGuid=laundryService.Guid,
+                            LaundryServiceGuid=laundryServiceSayNhanh.Guid,
                             LaundryServiceTypeGuid= laundryServiceTypeOver5Kg.Guid, //LaundryService chỉ có price khi là Giặt sấy nhanh và có weight
                             Email="admin@example.com",
                             PhoneNumber="0123456789",
@@ -131,7 +133,7 @@ public static class SeedDataExtensions
                             Status=OrderStatus.Done.ToString(),
                             Unit="Kg",
                             DeliveryDate=DateTime.UtcNow.AddDays(1),
-                            Weight=weight,
+                            Value=weight,
                             TotalPrice= laundryServiceTypeOver5Kg.Price * (laundryServiceTypeOver5Kg.ConditionType == ConditionTypes.GreaterThan ? weight : 1) ,
                         }
                     };
@@ -139,7 +141,7 @@ public static class SeedDataExtensions
                     await context.SaveChangesAsync();
                 }
 
-                var laundryServiceTypeUnder5Kg = await context.LaundryServiceTypes.FirstOrDefaultAsync(p => p.UnitValue == 5 && p.LaundryServiceGuid == laundryService.Guid && p.ConditionType == ConditionTypes.LessThan);
+                var laundryServiceTypeUnder5Kg = await context.LaundryServiceTypes.FirstOrDefaultAsync(p => p.ConditionValue == 5 && p.LaundryServiceGuid == laundryServiceSayNhanh.Guid && p.ConditionType == ConditionTypes.LessThan);
 
                 if (laundryServiceTypeUnder5Kg != null)
                 {
@@ -147,7 +149,7 @@ public static class SeedDataExtensions
                     var orders = new List<Order>()
                     {
                         new(){
-                            LaundryServiceGuid=laundryService.Guid,
+                            LaundryServiceGuid=laundryServiceSayNhanh.Guid,
                             LaundryServiceTypeGuid= laundryServiceTypeUnder5Kg.Guid, //LaundryService chỉ có price khi là Giặt sấy nhanh và có weight
                             Email="demo@gmail.com",
                             PhoneNumber="0987654321",
@@ -157,7 +159,7 @@ public static class SeedDataExtensions
                             Status=OrderStatus.Done.ToString(),
                             Unit="Kg",
                             DeliveryDate=DateTime.UtcNow.AddDays(2),
-                            Weight=weight,
+                            Value=weight,
                             TotalPrice= laundryServiceTypeUnder5Kg.Price * (laundryServiceTypeUnder5Kg.ConditionType == ConditionTypes.GreaterThan ? weight : 1) ,
                         }
                     };
@@ -165,8 +167,74 @@ public static class SeedDataExtensions
                     await context.SaveChangesAsync();
                 }
             }
+            var laundryServiceGiatHap = await context.LaundryServices.FirstOrDefaultAsync(p => p.Name == "Giặt Hấp Chất lượng cao");
+
+            if (laundryServiceGiatHap != null)
+            {
+                var laundryServiceTypes = new List<LaundryServiceType>()
+                {
+                    new(){
+                        Description="Áo - Quần",
+                        UnitValue=1,
+                        ConditionValue = 1,
+                        UnitType= UnitTypes.Unit,
+                        ConditionType= ConditionTypes.Equal,
+                        Price=60000,
+                        LaundryServiceGuid = laundryServiceGiatHap.Guid
+                    },
+                    new(){
+                        Description="Bộ Vest - Đầm",
+                        UnitValue=1,
+                        ConditionValue = 1,
+                        UnitType= UnitTypes.Unit,
+                        ConditionType= ConditionTypes.Equal,
+
+                        Price=150000,
+                        LaundryServiceGuid = laundryServiceGiatHap.Guid
+                    },
+                     new(){
+                        Description="Gấu Bông - (Chăn, Mền, Gối)",
+                        UnitValue=1,
+                        ConditionValue = 1,
+                        UnitType= UnitTypes.Unit,
+                        ConditionType= ConditionTypes.Equal,
+                        Price=70000,
+                        LaundryServiceGuid = laundryServiceGiatHap.Guid
+                    }
+                };
+                await context.LaundryServiceTypes.AddRangeAsync(laundryServiceTypes);
+                await context.SaveChangesAsync();
+
+                if (laundryServiceGiatHap != null)
+                {
+                    var laundryServiceTypeAoQuan = await context.LaundryServiceTypes.FirstOrDefaultAsync(p => p.Description == "Áo - Quần" && p.LaundryServiceGuid == laundryServiceGiatHap.Guid);
+                    if (laundryServiceTypeAoQuan != null)
+                    {
+                        var quantity = 5;
+                        var orders = new List<Order>()
+                        {
+                            new(){
+                                LaundryServiceGuid=laundryServiceGiatHap.Guid,
+                                LaundryServiceTypeGuid= laundryServiceTypeAoQuan.Guid, //LaundryService chỉ có price khi là Giặt sấy nhanh và có weight
+                                Email="demo@gmail.com",
+                                PhoneNumber="0987654321",
+                                Address="Số 2, Đường 2, Phường 2, Quận 2, TP.HCM",
+                                UserName="Nguyễn Văn B",
+                                Note="Giao hàng sau 2 ngày",
+                                Status=OrderStatus.Done.ToString(),
+                                Unit="Bộ",
+                                DeliveryDate=DateTime.UtcNow.AddDays(2),
+                                Value=quantity,
+                                TotalPrice= laundryServiceTypeAoQuan.Price * quantity,
+                            }
+                        };
+                        await context.Orders.AddRangeAsync(orders);
+                        await context.SaveChangesAsync();
+                    }
+                }
+            }
+            #endregion
         }
-        #endregion
     }
 
     // Tạo dữ liệu mẫu 

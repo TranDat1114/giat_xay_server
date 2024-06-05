@@ -195,21 +195,25 @@ auth.MapGet("users/me", [Authorize] async (ClaimsPrincipal claims, UserManager<U
 }).
 RequireAuthorization();
 
-app.MapGet("laundry-services", async (ApplicationDbContext context) =>
-    {
-        return Results.Ok(await context.LaundryServices.ToListAsync());
-    })
-    .WithTags("Laundry Services");
+var laundryService = app.MapGroup("laundry-services").WithTags("Laundry Services");
 
-app.MapPost("laundry-services", [Authorize(Policy = RolesString.Admin)] async (LaundryService laundryService, ApplicationDbContext context) =>
+laundryService.MapGet("", async (ApplicationDbContext context) =>
+    {
+        var laundryServices = await context.LaundryServices
+            .AsNoTracking()
+            .Include(p => p.LaundryServiceTypes)
+            .ToArrayAsync();
+        return Results.Ok(laundryServices);
+    });
+
+laundryService.MapPost("", [Authorize(Policy = RolesString.Admin)] async (LaundryService laundryService, ApplicationDbContext context) =>
     {
         context.LaundryServices.Add(laundryService);
         await context.SaveChangesAsync();
         return Results.Created($"/laundryServices/{laundryService.Guid}", laundryService);
     })
-    .RequireAuthorization()
-    .WithTags("Laundry Services");
-app.MapGet("laundry-services/{guid}", async (Guid guid, ApplicationDbContext context) =>
+    .RequireAuthorization();
+laundryService.MapGet("{guid}", async (Guid guid, ApplicationDbContext context) =>
     {
         var laundryService = await context.LaundryServices.FindAsync(guid);
         if (laundryService == null)
@@ -217,10 +221,9 @@ app.MapGet("laundry-services/{guid}", async (Guid guid, ApplicationDbContext con
             return Results.NotFound();
         }
         return Results.Ok(laundryService);
-    })
-    .WithTags("Laundry Services");
+    });
 
-app.MapPut("laundry-services/{guid}", [Authorize(Policy = RolesString.Admin)] async (Guid guid, LaundryService laundryService, ApplicationDbContext context) =>
+laundryService.MapPut("{guid}", [Authorize(Policy = RolesString.Admin)] async (Guid guid, LaundryService laundryService, ApplicationDbContext context) =>
     {
         var existingLaundryService = await context.LaundryServices.FindAsync(guid);
         if (existingLaundryService == null)
@@ -233,9 +236,9 @@ app.MapPut("laundry-services/{guid}", [Authorize(Policy = RolesString.Admin)] as
 
         await context.SaveChangesAsync();
         return Results.Ok(existingLaundryService);
-    }).RequireAuthorization().WithTags("Laundry Services");
+    }).RequireAuthorization();
 
-app.MapDelete("laundry-services/{guid}", [Authorize(Policy = RolesString.Admin)] async (Guid guid, ApplicationDbContext context) =>
+laundryService.MapDelete("{guid}", [Authorize(Policy = RolesString.Admin)] async (Guid guid, ApplicationDbContext context) =>
     {
         var laundryService = await context.LaundryServices.FindAsync(guid);
         if (laundryService == null)
@@ -245,9 +248,11 @@ app.MapDelete("laundry-services/{guid}", [Authorize(Policy = RolesString.Admin)]
         context.LaundryServices.Remove(laundryService);
         await context.SaveChangesAsync();
         return Results.NoContent();
-    }).RequireAuthorization().WithTags("Laundry Services");
+    }).RequireAuthorization();
 
-app.MapGet("income", async (ApplicationDbContext context) =>
+var inCome = app.MapGroup("/income").WithTags("Income");
+
+inCome.MapGet("", async (ApplicationDbContext context) =>
     {
         var income = new Income()
         {
@@ -261,12 +266,10 @@ app.MapGet("income", async (ApplicationDbContext context) =>
             TotalOrdersThisYear = await context.Orders.Where(s => s.CreatedAt.Year == DateTime.UtcNow.Year).CountAsync(),
         };
         return Results.Ok(income);
-    })
-    .WithTags("Income");
+    });
 
 var order = app.MapGroup("/orders").WithTags("Orders");
 
-//crud Orders
 order.MapGet("", [Authorize(Policy = RolesString.Admin)] async ([AsParameters] Pagination pagination, ApplicationDbContext context) =>
     {
         ApiResponse<Pagination<Order>> response = new();
@@ -283,6 +286,8 @@ order.MapGet("", [Authorize(Policy = RolesString.Admin)] async ([AsParameters] P
                     var laundryServiceType = await context.LaundryServiceTypes.FindAsync(order.LaundryServiceTypeGuid);
                     order.LaundryServiceName = laundryService?.Name;
                     order.LaundryServiceTypeDescription = laundryServiceType?.Description;
+
+                    order.TotalPrice = OrderPriceExtensions.TotalPrice(order.Value ?? 0, laundryServiceType!, laundryServiceType!.UnitType);
                 }
             }
 
@@ -303,7 +308,7 @@ order.MapGet("", [Authorize(Policy = RolesString.Admin)] async ([AsParameters] P
     })
     .RequireAuthorization();
 
-order.MapPost("", async (Order order, ApplicationDbContext context) =>
+order.MapPost("", [Authorize] async (Order order, ApplicationDbContext context) =>
     {
         context.Orders.Add(order);
         await context.SaveChangesAsync();

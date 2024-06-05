@@ -7,5 +7,7 @@ public class LaundryService : Entities
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? ImageUrl { get; set; }
+    [SwaggerIgnore]
+    public IEnumerable<LaundryServiceType> LaundryServiceTypes { get; set; } = default!;
 }
 

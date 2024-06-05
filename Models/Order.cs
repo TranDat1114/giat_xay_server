@@ -13,8 +13,9 @@ public class Order : Entities
     public string Address { get; set; } = string.Empty;
     public DateTime DeliveryDate { get; set; }
     public string PhoneNumber { get; set; } = string.Empty;
-    public int? Weight { get; set; }
+    public int? Value { get; set; }
     public string? Unit { get; set; }
+    [SwaggerIgnore]
     public decimal TotalPrice { get; set; }
     public string? Note { get; set; }
     [SwaggerIgnore]

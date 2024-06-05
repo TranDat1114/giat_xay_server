@@ -12,7 +12,7 @@ using giat_xay_server;
 namespace giat_xay_server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240604071550_InitialDatabase")]
+    [Migration("20240604142614_InitialDatabase")]
     partial class InitialDatabase
     {
         /// <inheritdoc />
@@ -325,7 +325,7 @@ namespace giat_xay_server.Migrations
                     b.Property<string>("UserName")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("Weight")
+                    b.Property<int?>("Value")
                         .HasColumnType("int");
 
                     b.HasKey("Guid");
@@ -464,13 +464,16 @@ namespace giat_xay_server.Migrations
 
             modelBuilder.Entity("giat_xay_server.LaundryServiceType", b =>
                 {
-                    b.HasOne("giat_xay_server.LaundryService", "LaundryService")
-                        .WithMany()
+                    b.HasOne("giat_xay_server.LaundryService", null)
+                        .WithMany("LaundryServiceTypes")
                         .HasForeignKey("LaundryServiceGuid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
 
-                    b.Navigation("LaundryService");
+            modelBuilder.Entity("giat_xay_server.LaundryService", b =>
+                {
+                    b.Navigation("LaundryServiceTypes");
                 });
 #pragma warning restore 612, 618
         }
