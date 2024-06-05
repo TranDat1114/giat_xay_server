@@ -310,6 +310,7 @@ order.MapGet("", [Authorize(Policy = RolesString.Admin)] async ([AsParameters] P
 
 order.MapPost("", [Authorize] async (Order order, ApplicationDbContext context) =>
     {
+        order.Status = OrderStatus.Pending.ToString();
         context.Orders.Add(order);
         await context.SaveChangesAsync();
         return Results.Created($"/orders/{order.Guid}", order);
