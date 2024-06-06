@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AutoMapper;
 using giat_xay_server;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -333,25 +334,20 @@ order.MapGet("{guid}", async (Guid guid, ApplicationDbContext context) =>
             return Results.NotFound();
         }
         return Results.Ok(order);
-    })
-    .RequireAuthorization();
+    });
 
-order.MapPut("{guid}", async (Guid guid, Order order, ApplicationDbContext context) =>
+order.MapPut("{guid}", async (Guid guid, OrderRequest order, ApplicationDbContext context, IMapper mapper) =>
     {
         var existingOrder = await context.Orders.FindAsync(guid);
         if (existingOrder == null)
         {
             return Results.NotFound();
         }
-        existingOrder.UserName = order.UserName;
-        existingOrder.Email = order.Email;
-        existingOrder.Address = order.Address;
-        existingOrder.DeliveryDate = order.DeliveryDate;
-        existingOrder.PhoneNumber = order.PhoneNumber;
-        existingOrder.Note = order.Note;
-        existingOrder.Status = order.Status;
-        existingOrder.LaundryServiceGuid = order.LaundryServiceGuid;
-        existingOrder.LaundryServiceTypeGuid = order.LaundryServiceTypeGuid;
+
+        var orderEntity = mapper.Map(order, existingOrder);
+
+        context.Orders.Update(orderEntity);
+
         await context.SaveChangesAsync();
         return Results.Ok(existingOrder);
     }).RequireAuthorization();
@@ -364,7 +360,7 @@ order.MapPut("{guid}/status", [Authorize(Policy = RolesString.Admin)] async (Gui
     {
         return Results.NotFound();
     }
-    
+
     if (status == OrderStatus.Done)
     {
         var laundryServiceType = await context.LaundryServiceTypes.FindAsync(existingOrder.LaundryServiceTypeGuid);
@@ -374,7 +370,7 @@ order.MapPut("{guid}/status", [Authorize(Policy = RolesString.Admin)] async (Gui
         }
         existingOrder.TotalPrice = OrderPriceExtensions.TotalPrice(existingOrder.Value ?? 0, laundryServiceType, laundryServiceType.UnitType);
     }
-    
+
     existingOrder.Status = status.ToString();
 
     await context.SaveChangesAsync();
