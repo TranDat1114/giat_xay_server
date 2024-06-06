@@ -3,7 +3,6 @@
 public enum OrderStatus
 {
     Pending,
-    TakeClothes,
     Processing,
     ReturnClothes,
     Done,

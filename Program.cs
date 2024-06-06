@@ -285,7 +285,7 @@ order.MapGet("", [Authorize(Policy = RolesString.Admin)] async ([AsParameters] P
                     var laundryServiceType = await context.LaundryServiceTypes.FindAsync(order.LaundryServiceTypeGuid);
                     order.LaundryServiceName = laundryService?.Name;
                     order.LaundryServiceTypeDescription = laundryServiceType?.Description;
-                    
+
                     if (order.TotalPrice == 0 && order.Value != null && laundryServiceType != null)
                     {
                         order.TotalPrice = OrderPriceExtensions.TotalPrice(order.Value ?? 0, laundryServiceType!, laundryServiceType!.UnitType);
@@ -355,6 +355,31 @@ order.MapPut("{guid}", async (Guid guid, Order order, ApplicationDbContext conte
         await context.SaveChangesAsync();
         return Results.Ok(existingOrder);
     }).RequireAuthorization();
+
+//Order update status 
+order.MapPut("{guid}/status", [Authorize(Policy = RolesString.Admin)] async (Guid guid, OrderStatus status, ApplicationDbContext context) =>
+{
+    var existingOrder = await context.Orders.FindAsync(guid);
+    if (existingOrder == null)
+    {
+        return Results.NotFound();
+    }
+    
+    if (status == OrderStatus.Done)
+    {
+        var laundryServiceType = await context.LaundryServiceTypes.FindAsync(existingOrder.LaundryServiceTypeGuid);
+        if (laundryServiceType == null)
+        {
+            return Results.BadRequest("Laundry service type not found");
+        }
+        existingOrder.TotalPrice = OrderPriceExtensions.TotalPrice(existingOrder.Value ?? 0, laundryServiceType, laundryServiceType.UnitType);
+    }
+    
+    existingOrder.Status = status.ToString();
+
+    await context.SaveChangesAsync();
+    return Results.Ok(existingOrder);
+}).RequireAuthorization();
 
 order.MapDelete("{guid}", async (Guid guid, ApplicationDbContext context) =>
     {
