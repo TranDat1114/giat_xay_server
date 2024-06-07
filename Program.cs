@@ -79,6 +79,8 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(RolesString.Admin, policy => policy.RequireClaim(ClaimTypes.Role, RolesString.Admin))
     .AddPolicy(RolesString.User, policy => policy.RequireClaim(ClaimTypes.Role, RolesString.User));
 
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddIdentityCore<User>(
     options =>
     {
@@ -86,13 +88,7 @@ builder.Services.AddIdentityCore<User>(
     }
 )
     .AddRoles<IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders()
-    .AddApiEndpoints();
-
-
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("LocalDb")));
+    .AddEntityFrameworkStores<ApplicationDbContext>();
 
 builder.Services.AddCors(options =>
 {
@@ -109,12 +105,11 @@ builder.Services.AddLogging();
 var app = builder.Build();
 
 
+await app.ApplyMigrations();
+await app.ApplySeedDataAsync();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    await app.ApplyMigrations();
-    await app.ApplySeedDataAsync();
-
     app.UseSwagger();
     app.UseSwaggerUI();
 }
